@@ -170,7 +170,6 @@ class createModuleCommand extends Command
                     $useStatements .= $repositoryImport . "\n";
                 }
                 
-                // Insertar los nuevos use statements después del namespace
                 $content = substr_replace($content, $useStatements, $position, 0);
             }
         }
@@ -179,9 +178,9 @@ class createModuleCommand extends Command
         $bindCode = "\$this->app->bind({$name}RepositoryContract::class, {$name}Repository::class);";
 
         if (!str_contains($content, $bindCode)) {
-            // Buscar el patrón del método register
+            
             if (preg_match('/public function register\(\): void\s+{\s+(.+?)\s+}/s', $content, $matches)) {
-                // Ya hay contenido en el método
+                
                 $currentContent = $matches[1];
                 $newContent = trim($currentContent) . "\n        {$bindCode}";
                 $content = preg_replace(
@@ -190,14 +189,14 @@ class createModuleCommand extends Command
                     $content
                 );
             } else {
-                // El método está vacío o solo tiene comentarios
+                
                 $content = preg_replace(
                     '/public function register\(\): void\s+{\s+\/\/\s+}/s',
                     "public function register(): void\n    {\n        {$bindCode}\n    }",
                     $content
                 );
                 
-                // Si el patrón anterior no funcionó, intentar con un método vacío
+                
                 if (!str_contains($content, $bindCode)) {
                     $content = preg_replace(
                         '/public function register\(\): void\s+{\s*}/s',

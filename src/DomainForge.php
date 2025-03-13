@@ -5,12 +5,12 @@ namespace Yntech\DomainForge;
 class DomainForge
 {
     /**
-     * Versión actual del paquete.
+     * current version of the package.
      */
     const VERSION = '1.0.0-dev';
     
     /**
-     * Obtiene la versión actual del paquete.
+     * Return the current version of the package
      *
      * @return string
      */
