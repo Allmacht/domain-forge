@@ -14,7 +14,7 @@ class createModuleCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'domain-forge:domain {name}';
+    protected $signature = 'domain-forge:domain {name} {--props=}';
 
     /**
      * The console command description.
@@ -37,6 +37,16 @@ class createModuleCommand extends Command
     public function handle()
     {
         $name = Str::studly($this->argument('name'));
+
+        $props = $this->option('props');
+
+        $propsArray = explode(',', $props);
+        $result_props = [];
+
+        foreach ($propsArray as $prop) {
+            [$key, $type] = explode(':', $prop);
+            $result_props[$key] = $type;
+        }
 
         $paths = [
             "src/Core/{$name}/Application",
@@ -66,6 +76,15 @@ class createModuleCommand extends Command
             $this->info("Created directory: {$path}");
         }
 
+        foreach ($result_props as $propName => $propType) {
+
+            $valueObjectPath = "src/Core/{$name}/Domain/ValueObjects/{$name}/" . Str::studly($propName) . ".php";
+
+            $this->filesystem->put($valueObjectPath, $this->valueObjectStub($name, $propName, $propType));
+
+            $this->info("Created ValueObject: {$valueObjectPath}");
+        }
+
         $this->filesystem->put("{$paths[5]}/{$name}.php", $this->domainStub(name: $name));
         
         $this->filesystem->put("{$paths[6]}/{$name}RepositoryContract.php", $this->interfaceStub(name: $name));
@@ -75,6 +94,7 @@ class createModuleCommand extends Command
         $this->registerRepository(name: $name);
 
         $this->newLine(2);
+        
         $this->info("Domain {$name} created successfully.");
     }
 
@@ -138,6 +158,34 @@ class createModuleCommand extends Command
             $name,
             $name,
             $name
+        );
+    }
+
+    protected function valueObjectStub(string $name, string $propName, string $propType): string
+    {
+        return sprintf(
+            <<<'STUB'
+            <?php
+    
+            namespace Src\Core\%s\Domain\ValueObjects\%s;
+    
+            final class %s
+            {
+                public function __construct(private %s $%s) {}
+
+                public function value(): %s
+                {
+                    return $this->%s;
+                }
+            }
+            STUB,
+            $name,
+            $name,
+            Str::studly($propName),
+            $propType,
+            Str::camel($propName),
+            $propType,
+            Str::camel($propName)
         );
     }
 
