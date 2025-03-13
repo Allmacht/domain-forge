@@ -1,0 +1,31 @@
+{
+    "name": "yntech/domain-forge",
+    "description": "Hexagonal architecture generator for Laravel. Provides Artisan commands for structuring domains following the principles of DDD and Screaming Architecture.",
+    "type": "library",
+    "license": "MIT",
+    "version": "1.0.0",
+    "autoload": {
+        "psr-4": {
+            "Yntech\\DomainForge\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Ulises Jacob",
+            "email": "ulises.jacob.cr@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^12.2",
+        "illuminate/console": "^12.2"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Yntech\\DomainForge\\Providers\\DomainForgeServiceProvider"
+            ]
+        }
+    }
+}
