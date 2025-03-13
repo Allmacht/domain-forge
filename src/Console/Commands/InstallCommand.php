@@ -20,7 +20,7 @@ class InstallCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Instala la estructura básica para domain Forge';
+    protected $description = 'Install Domain Forge';
 
     /**
      * Execute the console command.
@@ -29,15 +29,15 @@ class InstallCommand extends Command
      */
     public function handle()
     {
-        $this->info('Instalando Domain Forge...');
-        $this->info('1. Crear directorio Src si no existe');
+        $this->info('Installing Domain Forge...');
+        $this->info('Creating Src directory...');
         $this->createSrcDirectory();
-        $this->info('2. Copiar archivo de configuración');
+        $this->info('Creating config file...');
         $this->publishConfigFile();
-        $this->info('3. Crear RepositoryServiceProvider');
+        $this->info('Creating Repository Service Provider...');
         $this->createRepositoryServiceProvider();
-        $this->info('Domain Forge ha sido instalado correctamente.');
-        $this->info('Puedes generar un nuevo dominio usando: php artisan domain-forge:domain {nombre_dominio}');
+        $this->info('Domain Forge installed successfully.');
+        $this->info('You can generate a new domain using: php artisan domain-forge:domain {domain_name}');
 
         return Command::SUCCESS;
     }
@@ -48,9 +48,9 @@ class InstallCommand extends Command
             File::makeDirectory(base_path('src'), 0755, true);
             File::makeDirectory(base_path('src/Core'), 0755, true);
             File::makeDirectory(base_path('src/Shared'), 0755, true);
-            $this->info('Directorio Src creado correctamente.');
+            $this->info('Directory Src created successfully.');
         } else {
-            $this->warn('El directorio Src ya existe.');
+            $this->warn('Directory Src already exists.');
         }
     }
 
@@ -61,9 +61,9 @@ class InstallCommand extends Command
                 '--provider' => 'Yntech\DomainForge\Providers\DomainForgeServiceProvider',
                 '--tag' => 'config'
             ]);
-            $this->info('Archivo de configuración publicado correctamente.');
+            $this->info('Config file created successfully.');
         } else {
-            $this->warn('El archivo de configuración ya existe.');
+            $this->warn('Config file already exists.');
         }
     }
 
@@ -73,9 +73,9 @@ class InstallCommand extends Command
 
         if (!File::exists($providerPath)) {
             Artisan::call('make:provider RepositoryServiceProvider');
-            $this->info('RepositoryServiceProvider creado correctamente.');
+            $this->info('RepositoryServiceProvider created successfully.');
         } else {
-            $this->warn('RepositoryServiceProvider ya existe.');
+            $this->warn('RepositoryServiceProvider already exists.');
         }
     }
 }

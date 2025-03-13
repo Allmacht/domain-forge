@@ -1,24 +1,24 @@
 # Domain Forge
 
-Domain Forge es un paquete para Laravel que permite generar módulos de dominio siguiendo la arquitectura hexagonal de manera sencilla.
+Domain Forge is a Laravel package that allows you to easily generate domain modules following the hexagonal architecture.
 
-## Instalación
+## Installation
 
-Ejecuta el siguiente comando para instalar el paquete:
+Run the following command to install the package:
 
 ```sh
 composer require yntech/domain-forge
 ```
 
-## Configuración
+## Configuration
 
-Después de instalar el paquete, ejecuta el siguiente comando para configurar la estructura base:
+After installing the package, run the following command to configure the base structure:
 
 ```sh
 php artisan domain-forge:install
 ```
 
-Luego, añade la siguiente configuración en el archivo `composer.json` en la sección `autoload.psr-4` para asegurar que todas las clases sean cargadas correctamente:
+Then, add the following configuration to the `composer.json` file in the `autoload.psr-4` section to ensure that all classes are loaded correctly:
 
 ```json
 "autoload": {
@@ -28,27 +28,27 @@ Luego, añade la siguiente configuración en el archivo `composer.json` en la se
 }
 ```
 
-Después de realizar esta modificación, ejecuta el siguiente comando para actualizar la configuración de autoload:
+After making this modification, run the following command to update the autoload configuration:
 
 ```sh
 composer dump-autoload
 ```
 
-## Generación de Dominios
+## Domain Generation
 
-Para generar un nuevo módulo de dominio, usa el siguiente comando:
+To generate a new domain module, use the following command:
 
 ```sh
 php artisan domain-forge:domain <domain>
 ```
 
-Reemplaza `<domain>` por el nombre del dominio que deseas crear.
+Replace `<domain>` with the name of the domain you want to create.
 
-## Contribuciones
+## Contributions
 
-Si deseas contribuir a este proyecto, por favor, abre un issue o envía un pull request en el repositorio oficial.
+If you want to contribute to this project, please open an issue or submit a pull request in the official repository.
 
-## Licencia
+## License
 
-Este proyecto está bajo la licencia MIT.
+This project is under the MIT license.
 

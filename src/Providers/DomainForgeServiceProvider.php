@@ -13,12 +13,10 @@ class DomainForgeServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        // Publicar archivos de configuración
         $this->publishes([
             __DIR__ . '/../../config/domain-forge.php' => config_path('domain-forge.php'),
         ], 'config');
 
-        // Registrar comandos
         if ($this->app->runningInConsole()) {
             $this->commands([
                 InstallCommand::class,
@@ -32,7 +30,6 @@ class DomainForgeServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        // Fusionar configuraciones
         $this->mergeConfigFrom(
             __DIR__.'/../../config/domain-forge.php', 'domain-forge'
         );
