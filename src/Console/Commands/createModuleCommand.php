@@ -40,12 +40,17 @@ class createModuleCommand extends Command
 
         $props = $this->option('props');
 
-        $propsArray = explode(',', $props);
-        $result_props = [];
+        $result_props = null;
 
-        foreach ($propsArray as $prop) {
-            [$key, $type] = explode(':', $prop);
-            $result_props[$key] = $type;
+        if (! is_null($props)) {
+
+            $propsArray = explode(',', $props);
+            $result_props = [];
+
+            foreach ($propsArray as $prop) {
+                [$key, $type] = explode(':', $prop);
+                $result_props[$key] = $type;
+            }
         }
 
         $paths = [
@@ -76,16 +81,19 @@ class createModuleCommand extends Command
             $this->info("Created directory: {$path}");
         }
 
-        foreach ($result_props as $propName => $propType) {
+        if (!is_null($props)) {
 
-            $valueObjectPath = "src/Core/{$name}/Domain/ValueObjects/{$name}/" . Str::studly($propName) . ".php";
+            foreach ($result_props as $propName => $propType) {
 
-            $this->filesystem->put($valueObjectPath, $this->valueObjectStub($name, $propName, $propType));
-
-            $this->info("Created ValueObject: {$valueObjectPath}");
+                $valueObjectPath = "src/Core/{$name}/Domain/ValueObjects/{$name}/{$name}" . Str::studly($propName) . ".php";
+    
+                $this->filesystem->put($valueObjectPath, $this->valueObjectStub($name, $propName, $propType));
+    
+                $this->info("Created ValueObject: {$valueObjectPath}");
+            }
         }
 
-        $this->filesystem->put("{$paths[5]}/{$name}.php", $this->domainStub(name: $name));
+        $this->filesystem->put("{$paths[5]}/{$name}.php", $this->domainStub(name: $name, result_props: $result_props));
         
         $this->filesystem->put("{$paths[6]}/{$name}RepositoryContract.php", $this->interfaceStub(name: $name));
 
@@ -98,21 +106,69 @@ class createModuleCommand extends Command
         $this->info("Domain {$name} created successfully.");
     }
 
-    protected function domainStub(string $name): string
+    protected function domainStub(string $name, array|null $result_props): string
     {
+        if (is_null($result_props)) {
+            return sprintf(
+                <<<'STUB'
+                <?php
+    
+                namespace Src\Core\%s\Domain\Entities;
+    
+                final class %s
+                {
+                    public function __construct() {}
+    
+                    public static function create(): static {
+                        return new self();
+                    }
+                }
+                STUB,
+                $name,
+                $name
+            );
+        }
+        
+        $imports = array_map(
+            fn($prop) => "use Src\\Core\\{$name}\\Domain\\ValueObjects\\{$name}\\{$name}" . Str::studly($prop) . ";",
+            array_keys($result_props)
+        );
+    
+        $constructorProps = array_map(
+            fn($prop, $type) => "        public readonly {$name}" . Str::studly($prop) . " \${$prop},",
+            array_keys($result_props),
+            $result_props
+        );
+
         return sprintf(
             <<<'STUB'
             <?php
     
             namespace Src\Core\%s\Domain\Entities;
     
+            %s
+    
             final class %s
             {
-                //
+                private function __construct(
+            %s
+                ) {}
+    
+                public static function create(
+            %s
+                ): static {
+                    return new self(
+            %s
+                    );
+                }
             }
             STUB,
             $name,
-            $name
+            implode("\n", $imports),
+            $name,
+            implode("\n", $constructorProps),
+            implode("\n", str_replace('public readonly ', '', $constructorProps)),
+            implode("\n", array_map(fn($prop) => "          {$prop}: \${$prop},", array_keys($result_props)))
         );
     }
 
@@ -171,21 +227,19 @@ class createModuleCommand extends Command
     
             final class %s
             {
-                public function __construct(private %s $%s) {}
+                public function __construct(private %s $value) {}
 
                 public function value(): %s
                 {
-                    return $this->%s;
+                    return $this->value;
                 }
             }
             STUB,
             $name,
             $name,
-            Str::studly($propName),
+            $name.Str::studly($propName),
             $propType,
-            Str::camel($propName),
-            $propType,
-            Str::camel($propName)
+            $propType
         );
     }
 
