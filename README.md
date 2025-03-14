@@ -44,6 +44,16 @@ php artisan domain-forge:domain <domain>
 
 Replace `<domain>` with the name of the domain you want to create.
 
+### Generate Domain with Props
+
+You can generate a domain with properties using the `--props` option.
+
+Example:
+
+```sh
+php artisan domain-forge:domain <domain> --props=prop1:type1,prop2:type2
+```
+
 ## Contributions
 
 If you want to contribute to this project, please open an issue or submit a pull request in the official repository.
