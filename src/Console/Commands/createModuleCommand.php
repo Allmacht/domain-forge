@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Artisan;
 
 class createModuleCommand extends Command
 {
@@ -76,6 +77,8 @@ class createModuleCommand extends Command
 
         $this->info("Creating domain module: {$name}");
 
+        $this->createLaravelModel(name: $name);
+
         foreach ($paths as $path) {
             $this->filesystem->makeDirectory($path, 0755, true, true);
             $this->info("Created directory: {$path}");
@@ -104,6 +107,11 @@ class createModuleCommand extends Command
         $this->newLine(2);
         
         $this->info("Domain {$name} created successfully.");
+    }
+
+    protected function createLaravelModel(string $name): void
+    {
+        Artisan::call('make:model '.$name.' -m');
     }
 
     protected function domainStub(string $name, array|null $result_props): string
@@ -227,7 +235,15 @@ class createModuleCommand extends Command
     
             final class %s
             {
-                public function __construct(private %s $value) {}
+                public function __construct(private %s $value)
+                {
+                    $this->validate(value: $value);
+                }
+
+                private function validate(%s $value): void
+                {
+                    
+                }
 
                 public function value(): %s
                 {
@@ -238,6 +254,7 @@ class createModuleCommand extends Command
             $name,
             $name,
             $name.Str::studly($propName),
+            $propType,
             $propType,
             $propType
         );

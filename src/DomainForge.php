@@ -7,7 +7,7 @@ class DomainForge
     /**
      * current version of the package.
      */
-    const VERSION = '1.0.0-dev';
+    const VERSION = '1.1.0';
     
     /**
      * Return the current version of the package
