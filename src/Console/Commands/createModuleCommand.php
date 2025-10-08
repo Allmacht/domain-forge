@@ -49,30 +49,39 @@ class createModuleCommand extends Command
             $result_props = [];
 
             foreach ($propsArray as $prop) {
-                [$key, $type] = explode(':', $prop);
+                if (strpos($prop, ':') === false) {
+                    $this->warn("Propiedad '{$prop}' no tiene el formato correcto (debe ser nombre:tipo).");
+                    continue;
+                }
+                [$key, $type] = explode(':', $prop, 2);
                 $result_props[$key] = $type;
             }
         }
 
         $paths = [
-            "src/Core/{$name}/Application",
-            "src/Core/{$name}/Application/DTOs",
-            "src/Core/{$name}/Application/Services",
-            "src/Core/{$name}/Application/UseCases",
-            "src/Core/{$name}/Domain",
-            "src/Core/{$name}/Domain/Entities",
-            "src/Core/{$name}/Domain/Contracts",
-            "src/Core/{$name}/Domain/ValueObjects",
-            "src/Core/{$name}/Domain/ValueObjects/{$name}",
-            "src/Core/{$name}/Infrastructure",
-            "src/Core/{$name}/Infrastructure/Http",
-            "src/Core/{$name}/Infrastructure/Http/Controllers",
-            "src/Core/{$name}/Infrastructure/Http/Requests",
-            "src/Core/{$name}/Infrastructure/Http/Resources",
-            "src/Core/{$name}/Infrastructure/Http/Routes",
-            "src/Core/{$name}/Infrastructure/Persistence",
-            "src/Core/{$name}/Infrastructure/Persistence/Repositories",
-            "src/Core/{$name}/Infrastructure/Persistence/Repositories/Eloquent",
+            "src/Contexts/{$name}/Application", #0
+            "src/Contexts/{$name}/Application/Commands", #1
+            "src/Contexts/{$name}/Application/Handlers", #2
+            "src/Contexts/{$name}/Application/DTOs", #3
+            "src/Contexts/{$name}/Application/Services", #4
+            "src/Contexts/{$name}/Application/UseCases", #5
+
+            "src/Contexts/{$name}/Domain", #6
+            "src/Contexts/{$name}/Domain/Entities", #7
+            "src/Contexts/{$name}/Domain/Contracts", #8
+            "src/Contexts/{$name}/Domain/Exceptions", #9
+            "src/Contexts/{$name}/Domain/ValueObjects", #10
+            
+            "src/Contexts/{$name}/Infrastructure", #11
+            "src/Contexts/{$name}/Infrastructure/Http", #12
+            "src/Contexts/{$name}/Infrastructure/Http/Controllers", #13
+            "src/Contexts/{$name}/Infrastructure/Http/Requests", #14
+            "src/Contexts/{$name}/Infrastructure/Http/Resources", #15
+            "src/Contexts/{$name}/Infrastructure/Http/Routes", #16
+            "src/Contexts/{$name}/Infrastructure/Persistence", #17
+            "src/Contexts/{$name}/Infrastructure/Persistence/Mappers", #18
+            "src/Contexts/{$name}/Infrastructure/Persistence/Repositories", #19
+            "src/Contexts/{$name}/Infrastructure/Persistence/Repositories/Eloquent", #20
         ];
 
         $this->info("Creating domain module: {$name}");
@@ -84,11 +93,11 @@ class createModuleCommand extends Command
             $this->info("Created directory: {$path}");
         }
 
-        if (!is_null($props)) {
+        if (! is_null($props)) {
 
             foreach ($result_props as $propName => $propType) {
 
-                $valueObjectPath = "src/Core/{$name}/Domain/ValueObjects/{$name}/{$name}" . Str::studly($propName) . ".php";
+                $valueObjectPath = "src/Contexts/{$name}/Domain/ValueObjects/{$name}" . Str::studly($propName) . ".php";
     
                 $this->filesystem->put($valueObjectPath, $this->valueObjectStub($name, $propName, $propType));
     
@@ -96,13 +105,17 @@ class createModuleCommand extends Command
             }
         }
 
-        $this->filesystem->put("{$paths[5]}/{$name}.php", $this->domainStub(name: $name, result_props: $result_props));
+        $this->filesystem->put("{$paths[7]}/{$name}.php", $this->domainStub(name: $name, result_props: $result_props));
         
-        $this->filesystem->put("{$paths[6]}/{$name}RepositoryContract.php", $this->interfaceStub(name: $name));
+        $this->filesystem->put("{$paths[8]}/{$name}RepositoryContract.php", $this->interfaceStub(name: $name));
 
-        $this->filesystem->put("{$paths[17]}/{$name}Repository.php", $this->RepositoryStub(name: $name));
+        $this->filesystem->put("{$paths[20]}/{$name}Repository.php", $this->RepositoryStub(name: $name));
 
-        $this->registerRepository(name: $name);
+        $this->filesystem->put("{$paths[16]}/{$name}.php", $this->routeStub(name: $name));
+
+        $this->filesystem->put("{$paths[11]}/{$name}ServiceProvider.php", $this->providerStub(name: $name));
+
+        $this->registerProvider(name: $name);
 
         $this->newLine(2);
         
@@ -111,7 +124,16 @@ class createModuleCommand extends Command
 
     protected function createLaravelModel(string $name): void
     {
-        Artisan::call('make:model '.$name.' -m');
+        $modelPath = app_path("Models/{$name}.php");
+
+        if (!file_exists($modelPath)) {
+
+            $this->info("Creating model: {$name}");
+            Artisan::call('make:model '.$name.' -m');
+
+        } else {
+            $this->warn("Model {$name} already exists.");
+        }
     }
 
     protected function domainStub(string $name, array|null $result_props): string
@@ -121,7 +143,7 @@ class createModuleCommand extends Command
                 <<<'STUB'
                 <?php
     
-                namespace Src\Core\%s\Domain\Entities;
+                namespace Src\Contexts\%s\Domain\Entities;
     
                 final class %s
                 {
@@ -138,7 +160,7 @@ class createModuleCommand extends Command
         }
         
         $imports = array_map(
-            fn($prop) => "use Src\\Core\\{$name}\\Domain\\ValueObjects\\{$name}\\{$name}" . Str::studly($prop) . ";",
+            fn($prop) => "use Src\\Contexts\\{$name}\\Domain\\ValueObjects\\{$name}" . Str::studly($prop) . ";",
             array_keys($result_props)
         );
     
@@ -152,7 +174,7 @@ class createModuleCommand extends Command
             <<<'STUB'
             <?php
     
-            namespace Src\Core\%s\Domain\Entities;
+            namespace Src\Contexts\%s\Domain\Entities;
     
             %s
     
@@ -186,7 +208,7 @@ class createModuleCommand extends Command
             <<<'STUB'
             <?php
     
-            namespace Src\Core\%s\Domain\Contracts;
+            namespace Src\Contexts\%s\Domain\Contracts;
     
             interface %sRepositoryContract
             {
@@ -204,17 +226,16 @@ class createModuleCommand extends Command
             <<<'STUB'
             <?php
     
-            namespace Src\Core\%s\Infrastructure\Persistence\Repositories\Eloquent;
+            namespace Src\Contexts\%s\Infrastructure\Persistence\Repositories\Eloquent;
     
-            use Src\Core\%s\Domain\Contracts\%sRepositoryContract;
-            use Src\Core\%s\Domain\Entities\%s;
+            use Src\Contexts\%s\Domain\Contracts\%sRepositoryContract;
+            use Src\Contexts\%s\Domain\Entities\%s;
     
             class %sRepository implements %sRepositoryContract
             {
                 
             }
             STUB,
-            $name,
             $name,
             $name,
             $name,
@@ -231,7 +252,7 @@ class createModuleCommand extends Command
             <<<'STUB'
             <?php
     
-            namespace Src\Core\%s\Domain\ValueObjects\%s;
+            namespace Src\Contexts\%s\Domain\ValueObjects;
     
             final class %s
             {
@@ -252,7 +273,6 @@ class createModuleCommand extends Command
             }
             STUB,
             $name,
-            $name,
             $name.Str::studly($propName),
             $propType,
             $propType,
@@ -260,75 +280,96 @@ class createModuleCommand extends Command
         );
     }
 
-    protected function registerRepository(string $name)
+    protected function registerProvider(string $name): void
     {
-        $providerPath = app_path('Providers/RepositoryServiceProvider.php');
+        $providerClass = "Src\\Contexts\\{$name}\\Infrastructure\\{$name}ServiceProvider::class";
+        $providersFile = base_path('bootstrap/providers.php');
 
-        if (!File::exists($providerPath)) {
-            $this->error('The provider file does not exist.');
-            return 1;
+        if (! $this->filesystem->exists($providersFile)) {
+            $this->warn("Provider file not found at {$providersFile}");
+            return;
         }
 
-        $content = File::get($providerPath);
+        $content = $this->filesystem->get($providersFile);
 
-        $contractImport = "use Src\\Core\\{$name}\\Domain\\Contracts\\{$name}RepositoryContract;";
-        $repositoryImport = "use Src\\Core\\{$name}\\Infrastructure\\Persistence\\Repositories\\Eloquent\\{$name}Repository;";
+        if (str_contains($content, $providerClass)) {
+            $this->info("Service provider {$providerClass} is already registered.");
+            return;
+        }
 
-        $hasInterfaceUse = str_contains($content, $contractImport);
-        $hasImplementationUse = str_contains($content, $repositoryImport);
+        if (! str_starts_with(trim($content), '<?php')) {
+            $content = "<?php\n\n" . ltrim($content);
+        }
 
-        if (!$hasInterfaceUse || !$hasImplementationUse) {
-            if (preg_match('/namespace App\\\\Providers;(\s*)/', $content, $matches, PREG_OFFSET_CAPTURE)) {
-                $position = $matches[0][1] + strlen($matches[0][0]);
-                
-                $useStatements = "\n";
-                if (!$hasInterfaceUse) {
-                    $useStatements .= $contractImport . "\n";
+        $pos = strrpos($content, '];');
+        if ($pos === false) {
+            $this->error("Could not find the array closing tag (];) in {$providersFile}");
+            return;
+        }
+
+        $before = substr($content, 0, $pos);
+        $after = substr($content, $pos);
+
+        $before = rtrim($before);
+        if (! str_ends_with($before, ',')) {
+            $before .= ',';
+        }
+
+        $before .= "\n    {$providerClass}";
+
+        $newContent = $before . "\n" . $after;
+
+        $this->filesystem->put($providersFile, $newContent);
+
+        $this->info("✅ Service provider {$providerClass} registered successfully.");
+    }
+
+
+    protected function providerStub(string $name): string
+    {
+        return sprintf(
+            <<<'STUB'
+            <?php
+
+            namespace Src\Contexts\%s\Infrastructure;
+
+            use Illuminate\Support\ServiceProvider;
+            use Src\Contexts\%s\Domain\Contracts\%sRepositoryContract;
+            use Src\Contexts\%s\Infrastructure\Persistence\Repositories\Eloquent\%sRepository;
+
+            class %sServiceProvider extends ServiceProvider
+            {
+                public function register(): void
+                {
+                    $this->app->bind(%sRepositoryContract::class, %sRepository::class);
                 }
-                if (!$hasImplementationUse) {
-                    $useStatements .= $repositoryImport . "\n";
+
+                public function boot(): void
+                {
+                    $this->loadRoutesFrom(__DIR__.'/Http/Routes/%s.php');
                 }
-                
-                $content = substr_replace($content, $useStatements, $position, 0);
             }
-        }
-        
+            STUB,
+            $name,
+            $name,
+            $name,
+            $name,
+            $name,
+            $name,
+            $name,
+            $name,
+            $name
+        );
+    }
 
-        $bindCode = "\$this->app->bind({$name}RepositoryContract::class, {$name}Repository::class);";
+    protected function routeStub(string $name): string
+    {
+        return sprintf(
+            <<<'STUB'
+            <?php
 
-        if (!str_contains($content, $bindCode)) {
-            
-            if (preg_match('/public function register\(\): void\s+{\s+(.+?)\s+}/s', $content, $matches)) {
-                
-                $currentContent = $matches[1];
-                $newContent = trim($currentContent) . "\n        {$bindCode}";
-                $content = preg_replace(
-                    '/public function register\(\): void\s+{\s+(.+?)\s+}/s',
-                    "public function register(): void\n    {\n        {$newContent}\n    }",
-                    $content
-                );
-            } else {
-                
-                $content = preg_replace(
-                    '/public function register\(\): void\s+{\s+\/\/\s+}/s',
-                    "public function register(): void\n    {\n        {$bindCode}\n    }",
-                    $content
-                );
-                
-                
-                if (!str_contains($content, $bindCode)) {
-                    $content = preg_replace(
-                        '/public function register\(\): void\s+{\s*}/s',
-                        "public function register(): void\n    {\n        {$bindCode}\n    }",
-                        $content
-                    );
-                }
-            }
-        }
-
-        File::put($providerPath, $content);
-
-        $this->info("Repository {$name} registered successfully.");
-        return 0;
+            use Illuminate\Support\Facades\Route;
+            STUB
+        );
     }
 }

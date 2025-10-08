@@ -57,7 +57,7 @@ class InstallCommand extends Command
     {
         $paths = [
             'src',
-            'src/Core',
+            'src/Contexts',
             'src/Shared',
             'src/Shared/Application',
             'src/Shared/Domain',
