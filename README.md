@@ -954,18 +954,18 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## 🙏 Credits
 
-Created and maintained by [Yntech](https://github.com/yntech).
+Created and maintained by [Allmacht](https://github.com/Allmacht).
 
 ## 📞 Support
 
-- 📧 Email: support@yntech.com
-- 🐛 Issues: [GitHub Issues](https://github.com/yntech/domain-forge/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/yntech/domain-forge/discussions)
+- 📧 Email: ulises.jacob.cr@gmail.com
+- 🐛 Issues: [GitHub Issues](https://github.com/Allmacht/domain-forge/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/Allmacht/domain-forge/discussions)
 
 ## ⭐ Show Your Support
 
-If you find this package helpful, please consider giving it a ⭐ on [GitHub](https://github.com/yntech/domain-forge)!
+If you find this package helpful, please consider giving it a ⭐ on [GitHub](https://github.com/Allmacht/domain-forge)!
 
 ---
 
-Made with ❤️ by Yntech
+Made with ❤️ by Allmacht
