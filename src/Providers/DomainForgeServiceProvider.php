@@ -5,6 +5,7 @@ namespace Yntech\DomainForge\Providers;
 use Illuminate\Support\ServiceProvider;
 use Yntech\DomainForge\Console\Commands\InstallCommand;
 use Yntech\DomainForge\Console\Commands\createModuleCommand;
+use Yntech\DomainForge\Console\Commands\publishStubsCommand;
 
 class DomainForgeServiceProvider extends ServiceProvider
 {
@@ -21,6 +22,7 @@ class DomainForgeServiceProvider extends ServiceProvider
             $this->commands([
                 InstallCommand::class,
                 createModuleCommand::class,
+                PublishStubsCommand::class,
             ]);
         }
     }
@@ -31,7 +33,8 @@ class DomainForgeServiceProvider extends ServiceProvider
     public function register()
     {
         $this->mergeConfigFrom(
-            __DIR__.'/../../config/domain-forge.php', 'domain-forge'
+            __DIR__ . '/../../config/domain-forge.php',
+            'domain-forge'
         );
     }
 }

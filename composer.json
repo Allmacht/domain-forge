@@ -3,7 +3,7 @@
     "description": "Hexagonal architecture generator for Laravel. Provides Artisan commands for structuring domains following the principles of DDD and Screaming Architecture.",
     "type": "library",
     "license": "MIT",
-    "version": "1.2.0",
+    "version": "3.0.0",
     "autoload": {
         "psr-4": {
             "Yntech\\DomainForge\\": "src/"
