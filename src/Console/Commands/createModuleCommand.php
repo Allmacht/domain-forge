@@ -423,14 +423,15 @@ class CreateModuleCommand extends Command
 
     private function registerServiceProvider(string $name): void
     {
-        $providerPath = app_path('Providers/RepositoryServiceProvider.php');
+        $providersFile = base_path('bootstrap/providers.php');
+        $providerClass = "Src\\Contexts\\{$name}\\Infrastructure\\{$name}ServiceProvider::class";
 
         if (!$this->filesystem->exists($providersFile)) {
             $this->warn("⚠️  Provider file not found at {$providersFile}");
             return;
         }
 
-        $content = File::get($providerPath);
+        $content = $this->filesystem->get($providersFile);
 
         if (str_contains($content, $providerClass)) {
             return;
