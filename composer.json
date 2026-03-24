@@ -17,8 +17,8 @@
     "minimum-stability": "stable",
     "require": {
         "php": "^8.2",
-        "illuminate/support": "^12.2",
-        "illuminate/console": "^12.2"
+        "illuminate/support": "^12.2|^13.0",
+        "illuminate/console": "^12.2|^13.0"
     },
     "extra": {
         "laravel": {
