@@ -3,224 +3,327 @@
 namespace Yntech\DomainForge\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
 use Illuminate\Filesystem\Filesystem;
-use Illuminate\Support\Facades\Artisan;
 
 class InstallCommand extends Command
 {
+	protected $signature = 'domain-forge:install
+                            {--force : Overwrite existing files}';
+
+	protected $description = 'Install Domain Forge base structure and shared kernel';
+
+	public function __construct(
+		private readonly Filesystem $filesystem
+	) {
+		parent::__construct();
+	}
+
+	public function handle(): int
+	{
+		$this->components->info('Installing Domain Forge...');
+
+		$this->createBaseDirectories();
+		$this->publishConfig();
+		$this->createSharedKernel();
+		$this->registerSharedServiceProvider();
+
+		$this->newLine();
+		$this->components->info('Domain Forge installed successfully!');
+
+		$this->components->bulletList([
+			'Base structure created in <fg=cyan>src/</>',
+			'Shared kernel ready (TransactionManager, Uuid, Ulid)',
+			'Config published',
+		]);
+
+		$this->newLine();
+		$this->line('Next steps:');
+		$this->line('  1. Add to your <fg=yellow>composer.json</> autoload:');
+		$this->line('     <fg=cyan>"Src\\\\": "src/"</>');
+		$this->line('  2. Run: <fg=yellow>composer dump-autoload</>');
+		$this->line('  3. Generate your first domain:');
+		$this->line('     <fg=yellow>php artisan domain-forge:domain Product --props="id:uuidv7,name:string,price:float"</>');
+
+		return self::SUCCESS;
+	}
+
+	private function createBaseDirectories(): void
+	{
+		$directories = [
+			'src',
+			'src/Shared',
+			'src/Shared/Application',
+			'src/Shared/Domain',
+			'src/Shared/Domain/Contracts',
+			'src/Shared/Domain/Support',
+			'src/Shared/Domain/ValueObjects',
+			'src/Shared/Domain/Exceptions',
+			'src/Shared/Infrastructure',
+			'src/Shared/Infrastructure/Persistence',
+			'src/Shared/Infrastructure/Persistence/Eloquent',
+			'src/Contexts',
+		];
+
+		$created = 0;
+
+		foreach ($directories as $directory) {
+			$path = base_path($directory);
+
+			if (!$this->filesystem->isDirectory($path)) {
+				$this->filesystem->makeDirectory($path, 0755, true);
+				$created++;
+			}
+		}
+
+		if ($created > 0) {
+			$this->components->twoColumnDetail('Directories', "<fg=green>Created {$created} directories</>");
+		} else {
+			$this->components->twoColumnDetail('Directories', '<fg=gray>Already exist</>');
+		}
+	}
+
+	private function publishConfig(): void
+	{
+		$configPath = config_path('domain-forge.php');
+
+		if ($this->filesystem->exists($configPath) && !$this->option('force')) {
+			$this->components->twoColumnDetail('Config', '<fg=gray>Already exists</>');
+			return;
+		}
+
+		$this->callSilent('vendor:publish', [
+			'--provider' => 'Yntech\\DomainForge\\Providers\\DomainForgeServiceProvider',
+			'--tag' => 'config',
+			'--force' => true,
+		]);
+
+		$this->components->twoColumnDetail('Config', '<fg=green>Published</>');
+	}
+
+	private function createSharedKernel(): void
+	{
+		$files = [
+			'src/Shared/Domain/Contracts/TransactionManagerInterface.php' => $this->transactionManagerInterfaceStub(),
+			'src/Shared/Infrastructure/Persistence/Eloquent/LaravelTransactionManager.php' => $this->laravelTransactionManagerStub(),
+			'src/Shared/Domain/Support/Uuid.php' => $this->uuidStub(),
+			'src/Shared/Domain/Support/Ulid.php' => $this->ulidStub(),
+			'src/Shared/Infrastructure/SharedServiceProvider.php' => $this->sharedServiceProviderStub(),
+		];
+
+		foreach ($files as $relativePath => $content) {
+			$path = base_path($relativePath);
+
+			if ($this->filesystem->exists($path) && !$this->option('force')) {
+				$this->components->twoColumnDetail(basename($path), '<fg=gray>Already exists</>');
+				continue;
+			}
+
+			$this->filesystem->ensureDirectoryExists(dirname($path));
+			$this->filesystem->put($path, $content);
+
+			$this->components->twoColumnDetail(basename($path), '<fg=green>Created</>');
+		}
+	}
+
+	private function registerSharedServiceProvider(): void
+	{
+		$providersPath = base_path('bootstrap/providers.php');
+
+		if (!$this->filesystem->exists($providersPath)) {
+			$this->components->warn('bootstrap/providers.php not found. Please register SharedServiceProvider manually.');
+			return;
+		}
+
+		$providerClass = 'Src\\Shared\\Infrastructure\\SharedServiceProvider::class';
+		$content = $this->filesystem->get($providersPath);
+
+		if (str_contains($content, $providerClass)) {
+			$this->components->twoColumnDetail('SharedServiceProvider', '<fg=gray>Already registered</>');
+			return;
+		}
+
+		$content = str_replace(
+			'return [',
+			"return [\n    {$providerClass},",
+			$content
+		);
+
+		$this->filesystem->put($providersPath, $content);
+		$this->components->twoColumnDetail('SharedServiceProvider', '<fg=green>Registered</>');
+	}
+
+	private function transactionManagerInterfaceStub(): string
+	{
+		return <<<'PHP'
+<?php
+
+namespace Src\Shared\Domain\Contracts;
+
+interface TransactionManagerInterface
+{
+    public function beginTransaction(): void;
+
+    public function commit(): void;
+
+    public function rollback(): void;
+
+    public function transaction(callable $callback): mixed;
+}
+PHP;
+	}
+
+	private function laravelTransactionManagerStub(): string
+	{
+		return <<<'PHP'
+<?php
+
+namespace Src\Shared\Infrastructure\Persistence\Eloquent;
+
+use Illuminate\Support\Facades\DB;
+use Src\Shared\Domain\Contracts\TransactionManagerInterface;
+
+final class LaravelTransactionManager implements TransactionManagerInterface
+{
+    public function beginTransaction(): void
+    {
+        DB::beginTransaction();
+    }
+
+    public function commit(): void
+    {
+        DB::commit();
+    }
+
+    public function rollback(): void
+    {
+        DB::rollBack();
+    }
+
+    public function transaction(callable $callback): mixed
+    {
+        return DB::transaction($callback);
+    }
+}
+PHP;
+	}
+
+	private function uuidStub(): string
+	{
+		return <<<'PHP'
+<?php
+
+namespace Src\Shared\Domain\Support;
+
+final class Uuid
+{
     /**
-     * The name and signature of the console command.
-     *
-     * @var string
+     * UUID v4 (random)
      */
-    protected $signature = 'domain-forge:install';
-
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Install Domain Forge';
-
-	protected $filesystem;
-
-	public function __construct(Filesystem $filesystem)
+    public static function v4(): string
     {
-        parent::__construct();
-        $this->filesystem = $filesystem;
-    }
+        $data = random_bytes(16);
+        $data[6] = chr((ord($data[6]) & 0x0f) | 0x40);
+        $data[8] = chr((ord($data[8]) & 0x3f) | 0x80);
 
-    /**
-     * Execute the console command.
-     *
-     * @return int
-     */
-    public function handle()
-    {
-        $this->info('Installing Domain Forge...');
-        $this->info('Creating Src directory...');
-        $this->createSrcDirectory();
-        $this->info('Creating config file...');
-        $this->publishConfigFile();
-        $this->info('Creating Repository Service Provider...');
-        $this->createRepositoryServiceProvider();
-        $this->createLaravelTransactionManager();
-        $this->registerTransactionManager();
-        $this->info('Domain Forge installed successfully.');
-        $this->info('You can generate a new domain using: php artisan domain-forge:domain {domain_name} --props={props}');
+        $hex = bin2hex($data);
 
-        return Command::SUCCESS;
-    }
-
-    protected function createSrcDirectory()
-    {
-        $paths = [
-            'src',
-            'src/Core',
-            'src/Shared',
-            'src/Shared/Application',
-            'src/Shared/Domain',
-            'src/Shared/Domain/Contracts',
-            'src/Shared/Infrastructure',
-            'src/Shared/Infrastructure/Persistence',
-            'src/Shared/Infrastructure/Persistence/Eloquent',
-        ];
-
-        if (! File::isDirectory(base_path('src'))) {
-
-            foreach ($paths as $path) {
-                File::makeDirectory(base_path($path), 0755, true);
-            }
-
-            $this->info('Directory Src created successfully.');
-
-        } else {
-            $this->warn('Directory Src already exists.');
-        }
-    }
-
-	protected function createLaravelTransactionManager()
-    {
-        $files = [
-            "src/Shared/Domain/Contracts/TransactionManagerInterface.php" => $this->interfaceStub(),
-            "src/Shared/Infrastructure/Persistence/Eloquent/LaravelTransactionManager.php" => $this->laravelTransactionManagerStub()
-        ];
-
-        foreach ($files as $path => $stub) {
-            $this->filesystem->put($path, $stub);
-        }
-    }
-
-    protected function publishConfigFile()
-    {
-        if (!File::exists(config_path('domain-forge.php'))) {
-            $this->call('vendor:publish', [
-                '--provider' => 'Yntech\DomainForge\Providers\DomainForgeServiceProvider',
-                '--tag' => 'config'
-            ]);
-            $this->info('Config file created successfully.');
-        } else {
-            $this->warn('Config file already exists.');
-        }
-    }
-
-    protected function createRepositoryServiceProvider()
-    {
-        $providerPath = base_path('app/Providers/RepositoryServiceProvider.php');
-
-        if (!File::exists($providerPath)) {
-            Artisan::call('make:provider RepositoryServiceProvider');
-            $this->info('RepositoryServiceProvider created successfully.');
-        } else {
-            $this->warn('RepositoryServiceProvider already exists.');
-        }
-    }
-
-    protected function registerTransactionManager()
-    {
-        $providerPath = base_path('app/Providers/RepositoryServiceProvider.php');
-
-        if (! File::exists($providerPath)) {
-            $this->warn('RepositoryServiceProvider.php does not exist. Skipping binding.');
-
-            return;
-        }
-
-        $content = File::get($providerPath);
-
-        $namespacePattern = '/^namespace\s+([a-zA-Z0-9\\\\]+);/m';
-
-        $useStatementInterface = 'use Src\\Shared\\Domain\\Contracts\\TransactionManagerInterface;';
-        $useStatementImplementation = 'use Src\\Shared\\Infrastructure\\Persistence\\Eloquent\\LaravelTransactionManager;';
-
-        $needsInterfaceUse = ! str_contains($content, $useStatementInterface);
-        $needsImplementationUse = ! str_contains($content, $useStatementImplementation);
-
-        if ($needsInterfaceUse || $needsImplementationUse) {
-            $content = preg_replace_callback($namespacePattern, function ($matches) use ($useStatementInterface, $useStatementImplementation, $needsInterfaceUse, $needsImplementationUse) {
-                $inserts = $matches[0]."\n\n";
-                if ($needsInterfaceUse) {
-                    $inserts .= $useStatementInterface."\n";
-                }
-                if ($needsImplementationUse) {
-                    $inserts .= $useStatementImplementation."\n";
-                }
-
-                return $inserts;
-            }, $content);
-        }
-
-        $registerPattern = '/public function register\(\): void\s*\{\n/';
-        $bindStatement = "        \$this->app->bind(TransactionManagerInterface::class, LaravelTransactionManager::class);\n";
-
-        if (! str_contains($content, 'bind(TransactionManagerInterface::class')) {
-            $content = preg_replace($registerPattern, "$0$bindStatement", $content, 1);
-        }
-
-        $content = preg_replace('/\s*\/\/\s*$/', '', $content);
-
-        File::put($providerPath, $content);
-
-        $this->info('TransactionManager registered successfully in RepositoryServiceProvider.');
-    }
-
-    protected function interfaceStub()
-    {
         return sprintf(
-            <<<'STUB'
-            <?php
-
-            namespace Src\Shared\Domain\Contracts;
-
-            interface TransactionManagerInterface
-            {
-                public function beginTransaction(): void;
-
-                public function commit(): void;
-
-                public function rollback(): void;
-
-                public function transaction(callable $callback): mixed;
-            }
-            STUB,
+            '%s-%s-%s-%s-%s',
+            substr($hex, 0, 8),
+            substr($hex, 8, 4),
+            substr($hex, 12, 4),
+            substr($hex, 16, 4),
+            substr($hex, 20, 12)
         );
     }
 
-    protected function laravelTransactionManagerStub()
+    /**
+     * UUID v7 (time-ordered)
+     *
+     * @see https://www.rfc-editor.org/rfc/rfc9562
+     */
+    public static function v7(): string
     {
+        $timestamp = (int) (microtime(true) * 1000);
+        $timeHex = str_pad(dechex($timestamp), 12, '0', STR_PAD_LEFT);
+
+        $random = random_bytes(10);
+        $random[0] = chr((ord($random[0]) & 0x0f) | 0x70);
+        $random[2] = chr((ord($random[2]) & 0x3f) | 0x80);
+
+        $hex = $timeHex . bin2hex($random);
+
         return sprintf(
-            <<<'STUB'
-            <?php
-
-            namespace Src\Shared\Infrastructure\Persistence\Eloquent;
-
-            use Illuminate\Support\Facades\DB;
-            use Src\Shared\Domain\Contracts\TransactionManagerInterface;
-
-            class LaravelTransactionManager implements TransactionManagerInterface
-            {
-                public function beginTransaction(): void
-                {
-                    DB::beginTransaction();
-                }
-
-                public function commit(): void
-                {
-                    DB::commit();
-                }
-
-                public function rollback(): void
-                {
-                    DB::rollBack();
-                }
-
-                public function transaction(callable $callback): mixed
-                {
-                    return DB::transaction($callback);
-                }
-            }
-            STUB
+            '%s-%s-%s-%s-%s',
+            substr($hex, 0, 8),
+            substr($hex, 8, 4),
+            substr($hex, 12, 4),
+            substr($hex, 16, 4),
+            substr($hex, 20, 12)
         );
     }
+}
+PHP;
+	}
+
+	private function ulidStub(): string
+	{
+		return <<<'PHP'
+<?php
+
+namespace Src\Shared\Domain\Support;
+
+final class Ulid
+{
+    private const ENCODING = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+    public static function generate(): string
+    {
+        $time = (int) (microtime(true) * 1000);
+        $timeChars = '';
+
+        for ($i = 9; $i >= 0; $i--) {
+            $timeChars = self::ENCODING[$time % 32] . $timeChars;
+            $time = intdiv($time, 32);
+        }
+
+        $random = '';
+        for ($i = 0; $i < 16; $i++) {
+            $random .= self::ENCODING[random_int(0, 31)];
+        }
+
+        return $timeChars . $random;
+    }
+}
+PHP;
+	}
+
+	private function sharedServiceProviderStub(): string
+	{
+		return <<<'PHP'
+<?php
+
+namespace Src\Shared\Infrastructure;
+
+use Illuminate\Support\ServiceProvider;
+use Src\Shared\Domain\Contracts\TransactionManagerInterface;
+use Src\Shared\Infrastructure\Persistence\Eloquent\LaravelTransactionManager;
+
+class SharedServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->app->bind(
+            TransactionManagerInterface::class,
+            LaravelTransactionManager::class
+        );
+    }
+
+    public function boot(): void
+    {
+        //
+    }
+}
+PHP;
+	}
 }

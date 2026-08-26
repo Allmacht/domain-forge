@@ -7,8 +7,8 @@ class DomainForge
     /**
      * current version of the package.
      */
-    const VERSION = '1.1.0';
-    
+    const VERSION = '4.0.0';
+
     /**
      * Return the current version of the package
      *
